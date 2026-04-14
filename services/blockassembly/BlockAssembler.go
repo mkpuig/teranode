@@ -508,6 +508,20 @@ func (b *BlockAssembler) reset(ctx context.Context, validateInputs ...bool) erro
 
 	baBestBlockHeader, _ := b.CurrentBlock()
 
+	// Update the internal best block reference before SubtreeProcessor.Reset runs the
+	// postProcessFn (which calls loadUnminedTransactions). Without this, CurrentBlock()
+	// still returns the pre-reorg tip — which may be an invalidated block. That causes
+	// loadUnminedTransactions to include the invalid block's ID in bestBlockHeaderIDsMap,
+	// incorrectly skipping transactions from the invalidated block as "already mined".
+	//
+	// If SubtreeProcessor.Reset fails, setBestBlockHeader below overwrites this with the
+	// subtree processor's fallback state. The intermediate value only affects
+	// loadUnminedTransactions (inside postProcessFn), where the target chain is correct.
+	b.bestBlock.Store(&BestBlockInfo{
+		Header: bestBlockchainBlockHeader,
+		Height: currentHeight,
+	})
+
 	if response := b.subtreeProcessor.Reset(baBestBlockHeader, moveBackBlocks, moveForwardBlocks, isLegacySync, postProcessFn); response.Err != nil {
 		b.logger.Errorf("[BlockAssembler][Reset] resetting error resetting subtree processor: %v", response.Err)
 		// something went wrong, we need to set the best block header in the block assembly to be the
@@ -1203,21 +1217,28 @@ func (b *BlockAssembler) handleReorg(ctx context.Context, header *model.BlockHea
 	}
 
 	reset := hasInvalidBlock
+	reorgFailed := false
 
 	// now do the reorg in the subtree processor
 	if err = b.subtreeProcessor.Reorg(moveBackBlocks, moveForwardBlocks); err != nil {
 		b.logger.Warnf("[BlockAssembler] error doing reorg, will reset instead: %v", err)
 		// fallback to full reset
 		reset = true
+		reorgFailed = true
 	}
 
 	if reset {
 		// we have an invalid block in the reorg or reorg failed, we need to reset the block assembly and load the unmined transactions again
 		b.logger.Warnf("[BlockAssembler] reorg contains invalid block, resetting block assembly, moveBackBlocks: %d, moveForwardBlocks: %d", len(moveBackBlocks), len(moveForwardBlocks))
 
-		// validateInputs=true: getConflictingNodes() may miss conflicts not stored in subtree
-		// files; validateUnminedTxInputs() independently catches them via SpendingData.
-		if err = b.reset(ctx, true); err != nil {
+		// Only validate inputs when the Reorg itself failed — in that case
+		// getConflictingNodes() may miss conflicts not stored in subtree files and
+		// validateUnminedTxInputs() independently catches them via SpendingData.
+		// When Reorg succeeded (e.g. reset is due to hasInvalidBlock), conflicts were
+		// already detected by reorgBlocks; re-running validateInputs here is redundant
+		// and currently broken (fields.Inputs alone does not populate data.Tx in the
+		// SQL store, so validateUnminedTxInputs always returns false).
+		if err = b.reset(ctx, reorgFailed); err != nil {
 			return errors.NewProcessingError("error resetting block assembly after reorg with invalid block", err)
 		}
 	}
