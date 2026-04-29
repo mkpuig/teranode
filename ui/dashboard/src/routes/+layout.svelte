@@ -15,6 +15,7 @@
     tippy,
   } from '$lib/stores/media'
   import { dark as darkTheme } from '$internal/styles/themes/dark'
+  import { light as lightTheme } from '$internal/styles/themes/light'
   import { sm, md, lg, xl } from '$lib/styles/breakpoints'
   import GlobalStyle from '$lib/styles/GlobalStyle.svelte'
   import Spinner from '$lib/components/spinner/index.svelte'
@@ -63,8 +64,8 @@
   })
   $injectedLogos = logos
 
-  $theme = 'dark'
-  // $theme = 'light'
+  // Theme is persisted in localStorage via localStore (default: 'light')
+  // Remove any hardcoded override so user preference is respected.
 
   let customThemeProps = {}
 
@@ -74,7 +75,7 @@
         customThemeProps = darkTheme
         break
       case 'light':
-        customThemeProps = {}
+        customThemeProps = lightTheme
         break
       default:
     }

@@ -85,6 +85,10 @@
     --toastWidth: var(--toast-width);
     --toastBarHeight: 3px;
     --toastBarBackground: var(--toast-bar-bg-color, rgba(0, 0, 0, 0.1));
+    /* Override svelte-toast library defaults (white text, dark bg) so the
+       toast uses the app's colour scheme instead. */
+    --toastColor: var(--app-color);
+    --toastBackground: var(--comp-bg-color, var(--app-bg-color));
 
     /* Message box border colors */
     --msgbox-default-border-color: #3e4451;
@@ -119,7 +123,10 @@
     right: 9px;
   }
   :global(._toastItem) {
-    background: var(--app-bg-color);
+    /* Use component background (white in light, dark in dark) so the toast
+       stands out from the page background (#F0F2F5 in light mode). */
+    background: var(--comp-bg-color, var(--app-bg-color));
     color: var(--app-color);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
   }
 </style>
