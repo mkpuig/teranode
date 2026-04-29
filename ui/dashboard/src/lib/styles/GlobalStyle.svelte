@@ -2,7 +2,9 @@
   import { theme as themeStore } from '$lib/stores/media'
   import deepmerge from 'deepmerge'
 
-  import { defaults, light } from './themes'
+  import { defaults } from './themes'
+  import { dark as darkTheme } from '$internal/styles/themes/dark'
+  import { light as lightTheme } from '$internal/styles/themes/light'
   import { setCSSVariables } from './utils/css'
 
   // web fonts
@@ -13,27 +15,18 @@
   export let customThemeProps: any = {}
 
   const themes = {
-    light: light,
+    dark: darkTheme,
+    light: lightTheme,
   }
 
   let themeProps = {}
 
   $: {
-    themeProps = {}
+    themeProps = themes[theme] ?? lightTheme
 
     if (theme !== null) {
-      if (themes[theme]) {
-        switch (theme) {
-          case 'light':
-            themeProps = light
-            break
-        }
-      }
       themeProps = deepmerge(themeProps, customThemeProps)
-
       $themeStore = theme
-    } else {
-      themeProps = light
     }
 
     setCSSVariables(deepmerge(defaults, themeProps), themeNs)
