@@ -194,7 +194,7 @@
     border-radius: var(--border-radius);
     height: var(--height);
 
-    background: var(--toggle-bg-color);
+    background: var(--toggle-bg-color, #33373c);
     outline: none;
   }
 

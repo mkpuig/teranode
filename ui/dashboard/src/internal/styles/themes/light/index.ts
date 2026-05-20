@@ -405,7 +405,8 @@ export const light = {
       color: '#E4E6EB',
     },
   },
-  tab: {    default: {
+  tab: {
+    default: {
       enabled: {
         color: '#606770',
         bg: { color: 'transparent' },

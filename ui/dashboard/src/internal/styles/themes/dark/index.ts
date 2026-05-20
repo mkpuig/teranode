@@ -92,4 +92,9 @@ export const dark = {
   msgbox: { ...msgbox },
   switch: { ...switchh },
   tab: { ...tab },
+  toggle: {
+    bg: {
+      color: '#33373c',
+    },
+  },
 }
