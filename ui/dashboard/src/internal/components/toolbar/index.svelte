@@ -56,7 +56,14 @@
       <BreadCrumbs />
     </div>
     <div class="right">
-      <button class="theme-toggle" on:click={toggleTheme} type="button" title={$theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+      <button
+        class="theme-toggle"
+        on:click={toggleTheme}
+        type="button"
+        title={$theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        aria-label={$theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        aria-pressed={$theme === 'light'}
+      >
         <Icon name={$theme === 'dark' ? 'icon-sun-line' : 'icon-moon-line'} size={18} />
       </button>
       <TextInput

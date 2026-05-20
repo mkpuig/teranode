@@ -30,6 +30,10 @@
     }
 
     setCSSVariables(deepmerge(defaults, themeProps), themeNs)
+
+    if (typeof document !== 'undefined' && (theme === 'light' || theme === 'dark')) {
+      document.documentElement.setAttribute('data-theme', theme)
+    }
   }
 </script>
 
