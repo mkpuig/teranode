@@ -1574,7 +1574,7 @@
   }
 
   .modal-content {
-    background: #1a1b23;
+    background: var(--app-bg-color);
     border-radius: 8px;
     padding: 0;
     max-height: 80vh;
@@ -1593,7 +1593,7 @@
     align-items: center;
     padding: 20px 24px;
     border-bottom: 1px solid var(--app-border-color);
-    background: #15161d;
+    background: var(--app-subtle-bg-color);
   }
 
   .modal-title {

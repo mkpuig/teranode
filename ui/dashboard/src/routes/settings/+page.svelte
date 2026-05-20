@@ -533,7 +533,7 @@
 
   .clear-search:hover {
     color: var(--app-color);
-    background-color: var(--app-color);
+    background-color: var(--app-overlay-color);
   }
 
   .reset-columns-btn {

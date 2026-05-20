@@ -1423,12 +1423,12 @@
   }
 
   .invalid-blocks-list::-webkit-scrollbar-thumb {
-    background-color: var(--app-color);
+    background-color: var(--app-overlay-strong-color);
     border-radius: 4px;
   }
 
   .invalid-blocks-list::-webkit-scrollbar-thumb:hover {
-    background-color: var(--app-color);
+    background-color: var(--comp-label-color);
   }
 
   .invalid-blocks-list table {
@@ -1610,7 +1610,7 @@
   }
 
   .refresh-button {
-    background-color: var(--app-color);
+    background-color: var(--comp-bg-color);
     border: 1px solid var(--app-border-color);
     color: var(--comp-label-color);
     cursor: pointer;

@@ -400,7 +400,7 @@
 
   .column .peer {
     padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-subtle-bg-color);
     border-radius: 8px;
     margin-bottom: 12px;
     text-align: center;
