@@ -136,6 +136,12 @@ type txMetaCacheOps interface {
 	// This method allows direct storage of pre-serialized metadata for performance optimization.
 	// Returns an error if the cache operation fails.
 	SetCacheFromBytes(key, txMetaBytes []byte) error
+
+	// SetCacheMulti stores multiple cache entries in a single call.
+	// Implementations are expected to fan out across the cache's bucket-shard locks so that
+	// a single Kafka message containing many entries acquires each touched bucket lock once
+	// instead of once per entry. Critical for txmetaHandler throughput under heavy load.
+	SetCacheMulti(keys [][]byte, values [][]byte) error
 }
 
 // SetTxMetaCacheFromBytes stores raw transaction metadata bytes in the cache.
@@ -160,6 +166,26 @@ func (u *Server) SetTxMetaCacheFromBytes(_ context.Context, key, txMetaBytes []b
 		return cache.SetCacheFromBytes(key, txMetaBytes)
 	}
 
+	return nil
+}
+
+// SetTxMetaCacheMulti stores multiple transaction metadata entries in the cache in a single call.
+//
+// Reserved for a future batched fan-out optimisation of the Kafka txmeta handler: the
+// intent is that a single Kafka message containing N ADD entries can be applied as one
+// SetCacheMulti call, letting the underlying cache acquire each touched per-bucket lock
+// once per call instead of once per entry. The current txmetaHandler is sharded across
+// 256 hash-byte worker goroutines and applies entries one at a time via
+// SetTxMetaCacheFromBytes — it does NOT call this method yet. Kept on the interface so
+// alternative cache implementations can implement the fan-out today and the handler can
+// be migrated later without an interface change.
+func (u *Server) SetTxMetaCacheMulti(_ context.Context, keys [][]byte, values [][]byte) error {
+	if len(keys) == 0 {
+		return nil
+	}
+	if cache, ok := u.utxoStore.(txMetaCacheOps); ok {
+		return cache.SetCacheMulti(keys, values)
+	}
 	return nil
 }
 
@@ -925,9 +951,13 @@ func (u *Server) getSubtreeTxHashes(spanCtx context.Context, stat *gocore.Stat, 
 	url := fmt.Sprintf("%s/subtree/%s", baseURL, subtreeHash.String())
 	u.logger.Debugf("[getSubtreeTxHashes][%s] getting subtree from %s", subtreeHash.String(), url)
 
+	// Bound the body at the policy cap (MaximumMerkleItemsPerSubtree * HashSize). A peer that
+	// streams more than this is malicious — fail fast rather than ReadAll into memory.
+	maxSubtreeBytes := int64(u.settings.BlockAssembly.MaximumMerkleItemsPerSubtree) * int64(chainhash.HashSize)
+
 	// TODO add the metric for how long this takes
 	// body, err := util.DoHTTPRequestBodyReader(spanCtx, url)
-	subtreeBytes, err := util.DoHTTPRequest(spanCtx, url)
+	subtreeBytes, err := util.DoHTTPRequestBounded(spanCtx, url, maxSubtreeBytes)
 	if err != nil {
 		// check whether this is a 404 error
 		if errors.Is(err, errors.ErrNotFound) {
@@ -1233,7 +1263,9 @@ func (u *Server) getSubtreeMissingTxs(ctx context.Context, subtreeHash chainhash
 			// get the whole subtree from the other peer
 			url := fmt.Sprintf("%s/subtree_data/%s", baseURL, subtreeHash.String())
 
-			body, subtreeDataErr := util.DoHTTPRequestBodyReader(ctx, url)
+			// Retry on 503 — peer's asset service may be admission-rejecting under load
+			// (asset_concurrency_subtree_data_create cap). Other errors fail through immediately.
+			body, subtreeDataErr := util.DoHTTPRequestBodyReaderWithRetry(ctx, url)
 			if subtreeDataErr != nil {
 				// Peer cannot provide subtree data - report as invalid subtree
 				u.publishInvalidSubtree(ctx, subtreeHash.String(), baseURL, "peer_cannot_provide_subtree_data")
